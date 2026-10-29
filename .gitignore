@@ -1,0 +1,8 @@
+.work/
+.delivery/
+.venv/
+__pycache__/
+*.egg-info/
+build/
+dist/
+.demo-repo/

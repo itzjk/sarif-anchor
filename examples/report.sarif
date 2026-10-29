@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [{
+    "tool": {"driver": {"name": "synthetic-example", "rules": [{"id": "DEMO001", "shortDescription": {"text": "Demonstrate a source citation"}}]}},
+    "results": [{
+      "ruleId": "DEMO001",
+      "message": {"text": "Synthetic citation, no security claim."},
+      "locations": [{"physicalLocation": {
+        "artifactLocation": {"uri": "example.py"},
+        "region": {"startLine": 2, "snippet": {"text": "    return name.strip()"}}
+      }}]
+    }]
+  }]
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Properties>
+  <Properties Key="SARIF2006.UrisShouldBeReachable.Options">
+    <Property Key="RuleEnabled" Value="Disabled" />
+  </Properties>
+</Properties>

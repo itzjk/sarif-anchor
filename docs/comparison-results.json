@@ -1,0 +1,33 @@
+{
+  "checked_at_utc": "2026-10-29T05:15:41.515066+00:00",
+  "fixture_sha256": "9ff5fbb05505da3b56627193d7f8ff92534a6d940c030bfe03a4b361c2129b18",
+  "sdk_version": "5.8.0",
+  "sdk_source_commit": "986c3f9425d8b4df4b56febcf85dd9d43d6d6cd8",
+  "adjudge_source_commit": "6a852248e229aef52632cf17bb56fc2191f7b30f",
+  "checks": [
+    {
+      "check": "sdk-validation",
+      "exit_code": 0,
+      "output": "Analyzing...\nSARIF.MULTITOOL : warning WRN999.RuleExplicitlyDisabled : Rule 'SARIF2006' was explicitly disabled by the user. As result, this tool run cannot be used for compliance or other auditing processes that require a comprehensive analysis.\nTHREADS: 10\n$PROJECT/examples/report.sarif(5,24): warning SARIF2005: runs[0].tool.driver: The tool 'synthetic-example' does not provide 'informationUri'. This property helps the developer responsible for addessing a result by providing a way to learn more about the tool.\n$PROJECT/examples/report.sarif(5,24): warning SARIF2005: runs[0].tool.driver: The tool 'synthetic-example' does not provide any of the version-related properties 'version', 'semanticVersion', 'dottedQuadFileVersion'. Providing version information enables the log file consumer to determine whether the file was produced by an up to date version, and to avoid accidentally comparing log files produced by different tool versions.\n\nDone. 1 files scanned.\nAnalysis completed successfully.\n\n"
+    },
+    {
+      "check": "sdk-explicit-ref",
+      "exit_code": 1,
+      "output": "SARIF Multitool 5.8.0+33e5e287d4136acf2b1358c6cee0671126d61e6c\n\u00a9 Microsoft Corporation. All rights reserved.\n\nERROR(S):\n  Option 'repo' is unknown.\n  Option 'ref' is unknown.\n  Option 'rule-kind' is defined with a bad format.\n"
+    },
+    {
+      "check": "adjudge-explicit-ref",
+      "exit_code": 2,
+      "output": "Usage: adjudge triage [OPTIONS] {inputs}...\nTry 'adjudge triage --help' for help.\n\u256d\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502 No such option: --repo (Possible options: --help)                            \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n"
+    },
+    {
+      "check": "adjudge-dry-run",
+      "exit_code": 0,
+      "output": "\u00b7 ingest 1 file(s)\n\u00b7 dedup 1 \u2192 1 unique\n\u00b7 correlate 1 \u2192 1 (0 corroborated)\n\u00b7 done dry-run \u00b7 est ~$0.0028\ndry run: 1 unique finding(s), 0 malformed line(s) skipped.\nEstimated triage cost (unknown model): ~$0.0028. Nothing was spent.\n"
+    }
+  ],
+  "output_licenses": {
+    "Microsoft SARIF SDK": "MIT: https://github.com/microsoft/sarif-sdk/blob/main/LICENSE",
+    "Adjudge": "MIT: https://github.com/takoneko8/adjudge/blob/main/LICENSE"
+  }
+}
