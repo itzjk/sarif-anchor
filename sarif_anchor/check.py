@@ -4,7 +4,7 @@ import re
 import stat
 from urllib.parse import unquote, urlsplit
 
-from .git import GitError, GitTree, LimitError, Limits
+from .git import GitError, GitTree, LimitError, Limits, read_limited
 
 
 class InputError(Exception):
@@ -42,7 +42,7 @@ def load_report(path, limits):
         with os.fdopen(descriptor, "rb") as stream:
             if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
                 raise InputError("report must be a regular file")
-            raw = stream.read(limits.report_bytes + 1)
+            raw = read_limited(stream, limits.report_bytes)
         if len(raw) > limits.report_bytes:
             raise InputError("report size limit exceeded")
         report = json.loads(raw.decode("utf-8-sig"), object_pairs_hook=unique_object,
@@ -84,7 +84,10 @@ def repo_path(artifact):
         return None, "invalid-uri-escape"
     if re.search(r"%(?:2f|5c)", uri, re.IGNORECASE):
         return None, "encoded-path-separator"
-    parsed = urlsplit(uri)
+    try:
+        parsed = urlsplit(uri)
+    except ValueError:
+        return None, "invalid-relative-uri"
     if parsed.scheme:
         return None, "absolute-or-remote-uri"
     if parsed.netloc or uri.startswith("/"):
@@ -124,7 +127,18 @@ def excluded_locations(result):
     return count
 
 
-def check_location(location, run, tree):
+def source_encodings(run):
+    encodings = {}
+    for artifact in array_value(run.get("artifacts", []), "artifacts"):
+        object_value(artifact, "artifact")
+        location = object_value(artifact.get("location", {}), "artifact.location")
+        path, reason = repo_path(location)
+        if reason is None and "encoding" in artifact:
+            encodings.setdefault(path, []).append(artifact["encoding"])
+    return encodings
+
+
+def check_location(location, run, tree, encodings):
     row = dict(path=None, range=None, quoted=None, observed=None,
                status="unverified", reason=None)
     physical = object_value(location.get("physicalLocation", {}), "physicalLocation")
@@ -144,6 +158,11 @@ def check_location(location, run, tree):
         row["quoted"] = snippet.get("text")
     if reason:
         row["reason"] = reason
+        return row
+    declared_encodings = encodings.get(path, [run.get("defaultEncoding", "utf-8")])
+    if any(not isinstance(value, str) or value.lower() not in ("utf-8", "utf8")
+           for value in declared_encodings):
+        row["reason"] = "unsupported-source-encoding"
         return row
     unsupported = {"startColumn", "endColumn", "charOffset", "charLength", "byteOffset", "byteLength"}
     if unsupported.intersection(region):
@@ -168,6 +187,9 @@ def check_location(location, run, tree):
         return row
     if reason:
         row.update(status="missing-file" if reason == "missing-file" else "unverified", reason=reason)
+        return row
+    if blob.startswith(b"\xef\xbb\xbf"):
+        row["reason"] = "unsupported-byte-order-mark"
         return row
     try:
         if b"\0" in blob:
@@ -212,9 +234,14 @@ def _check_report(report, tree, revision, limits):
     no_locations = 0
     context_count = 0
     observed_bytes = 0
+    if report.get("inlineExternalProperties"):
+        exclusions.append(dict(reason="inline-external-data-excluded"))
     for ri, run in enumerate(report["runs"]):
+        encodings = source_encodings(run)
         secondary_count += len(array_value(run.get("threadFlowLocations", []), "threadFlowLocations"))
         secondary_count += excluded_locations({"graphs": run.get("graphs", [])})
+        secondary_count += excluded_locations({"invocations": run.get("invocations", []),
+                                               "conversion": run.get("conversion", {})})
         for provenance in array_value(run.get("versionControlProvenance", []), "versionControlProvenance"):
             object_value(provenance, "versionControlProvenance entry")
             declared = provenance.get("revisionId")
@@ -238,10 +265,12 @@ def _check_report(report, tree, revision, limits):
                 physical = object_value(location.get("physicalLocation", {}), "physicalLocation")
                 if "contextRegion" in physical:
                     context_count += 1
-                row = check_location(location, run, tree)
+                row = check_location(location, run, tree, encodings)
                 observed_bytes += len((row["observed"] or "").encode("utf-8"))
-                if observed_bytes > limits.output_bytes:
-                    row.update(observed=None, status="unverified", reason="evidence-output-size-limit")
+                if row["observed"] is not None and observed_bytes > limits.output_bytes:
+                    row.update(observed=None, reason="evidence-output-size-limit")
+                    exclusions.append(dict(run_index=ri, result_index=rj, location_index=li,
+                                           reason="evidence-output-size-limit"))
                 row.update(run_index=ri, result_index=rj,
                            result_id=result.get("guid") or result.get("ruleId") or f"run-{ri}/result-{rj}",
                            location_index=li)

@@ -1,6 +1,6 @@
 # Existing-tool check
 
-Checked on 2026-10-29 before implementing the citation checker. These are bounded
+Checked on 2026-10-29. These are bounded
 tests of the published interfaces and source, not a claim that no equivalent
 tool exists. Repository popularity did not enter the comparison.
 

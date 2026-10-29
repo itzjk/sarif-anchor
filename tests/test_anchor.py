@@ -184,6 +184,43 @@ class RepositoryCase(unittest.TestCase):
         self.physical["artifactLocation"]["uri"] = "folder%20with%20spaces/%5Bcaf%C3%A9%5D%2A.py"
         self.assertEqual(self.run_check(revision)["exit_code"], 0)
 
+    def test_malformed_authority_preserves_other_discrepancies(self):
+        self.physical["region"]["snippet"]["text"] = "different"
+        for uri in ("//[bad/path", "http://[::1"):
+            with self.subTest(uri=uri):
+                unsupported = copy.deepcopy(self.result["locations"][0])
+                unsupported["physicalLocation"]["artifactLocation"]["uri"] = uri
+                self.result["locations"] = [self.result["locations"][0], unsupported]
+                result = self.run_check()
+                self.assertEqual(result["exit_code"], 1)
+                self.assertFalse(result["complete"])
+                self.assertEqual(result["locations"][0]["status"], "snippet-mismatch")
+                self.assertEqual(result["locations"][1]["status"], "unverified")
+                self.assertEqual(result["locations"][1]["reason"], "invalid-relative-uri")
+
+    def test_declared_encoding_is_honored_before_decoding(self):
+        self.source.write_bytes(b"AB")
+        revision = self.commit()
+        self.physical["region"] = {"startLine": 1, "snippet": {"text": "AB"}}
+        run = self.data["runs"][0]
+        for name in ("UTF-16BE", "latin1"):
+            with self.subTest(encoding=name):
+                run["defaultEncoding"] = name
+                result = self.run_check(revision)
+                self.assertEqual(result["locations"][0]["reason"], "unsupported-source-encoding")
+                self.assertEqual(result["exit_code"], 2)
+                self.assertIsNone(result["locations"][0]["observed"])
+                del run["defaultEncoding"]
+                run["artifacts"] = [{"location": {"uri": "example.py"}, "encoding": name}]
+                self.assertEqual(self.run_check(revision)["exit_code"], 2)
+                del run["artifacts"]
+        run["defaultEncoding"] = "UTF-16BE"
+        run["artifacts"] = [{"location": {"uri": "example.py"}, "encoding": "UTF-8"}]
+        self.assertEqual(self.run_check(revision)["exit_code"], 0)
+        run["defaultEncoding"] = "utf-8"
+        run["artifacts"] = [{"location": {"uri": "unrelated.py"}, "encoding": "UTF-16BE"}]
+        self.assertEqual(self.run_check(revision)["exit_code"], 0)
+
     def test_unresolved_base_and_indirect_reference(self):
         for key, value in (("uriBaseId", "%SRCROOT%"), ("index", 0)):
             with self.subTest(key=key):
@@ -229,6 +266,14 @@ class RepositoryCase(unittest.TestCase):
             self.source.write_bytes(content)
             result = self.run_check(self.commit())
             self.assertEqual(result["locations"][0]["reason"], "binary-or-non-utf8")
+
+    def test_byte_order_mark_is_not_treated_as_source_content(self):
+        self.source.write_bytes(b"\xef\xbb\xbfAB")
+        revision = self.commit()
+        self.physical["region"] = {"startLine": 1, "snippet": {"text": "\ufeffAB"}}
+        result = self.run_check(revision)
+        self.assertEqual(result["exit_code"], 2)
+        self.assertEqual(result["locations"][0]["reason"], "unsupported-byte-order-mark")
 
     def test_directory_is_not_regular_blob(self):
         (self.repo / "dir").mkdir()
@@ -298,6 +343,23 @@ class RepositoryCase(unittest.TestCase):
         self.assertEqual(result["exit_code"], 2)
         self.assertEqual(result["locations"][0]["reason"], "evidence-output-size-limit")
 
+    def test_evidence_budget_preserves_known_discrepancies(self):
+        self.source.write_text("x" * 200 + "\n")
+        revision = self.commit()
+        self.physical["region"] = {"startLine": 1, "snippet": {"text": "different"}}
+        unsupported = copy.deepcopy(self.result["locations"][0])
+        unsupported["physicalLocation"]["artifactLocation"]["uri"] = "https://example.invalid/source"
+        self.result["locations"].append(unsupported)
+        result = self.run_check(revision, limits=Limits(output_bytes=150))
+        self.assertEqual(result["exit_code"], 1)
+        self.assertTrue(result["has_discrepancies"])
+        self.assertFalse(result["complete"])
+        self.assertEqual(result["locations"][0]["status"], "snippet-mismatch")
+        self.assertIsNone(result["locations"][0]["observed"])
+        self.assertEqual(result["exclusions"][0]["reason"], "evidence-output-size-limit")
+        self.assertEqual(result["locations"][1]["reason"], "absolute-or-remote-uri")
+        self.assertEqual(len(result["exclusions"]), 1)
+
     def test_special_report_is_rejected(self):
         fifo = self.base / "fifo"
         os.mkfifo(fifo)
@@ -354,6 +416,25 @@ class RepositoryCase(unittest.TestCase):
         self.assertEqual(result["coverage"]["secondary_locations_excluded"], 2)
         self.assertEqual(result["exit_code"], 2)
 
+    def test_notification_locations_and_inline_data_are_excluded(self):
+        invocation = {"executionSuccessful": True,
+                      "toolExecutionNotifications": [{"message": {"text": "example"},
+                                                       "locations": [{"physicalLocation": self.physical}]}],
+                      "toolConfigurationNotifications": [{"message": {"text": "example"},
+                                                           "locations": [{}]}]}
+        self.data["runs"][0]["invocations"] = [invocation]
+        self.data["runs"][0]["conversion"] = {"invocation": invocation}
+        result = self.run_check()
+        self.assertEqual(result["coverage"]["secondary_locations_excluded"], 4)
+        self.assertEqual(result["exit_code"], 2)
+        self.assertFalse(result["complete"])
+        del self.data["runs"][0]["invocations"]
+        del self.data["runs"][0]["conversion"]
+        self.data["inlineExternalProperties"] = [{"version": "2.1.0", "results": []}]
+        result = self.run_check()
+        self.assertEqual(result["exclusions"][0]["reason"], "inline-external-data-excluded")
+        self.assertEqual(result["exit_code"], 2)
+
     def test_cli_json_is_stable_and_errors_use_exit_three(self):
         command = [sys.executable, "-m", "sarif_anchor", str(self.report), "--repo", str(self.repo), "--ref", self.first, "--json"]
         one = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
@@ -376,6 +457,15 @@ class RepositoryCase(unittest.TestCase):
                                  cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(process.returncode, 3)
         self.assertEqual(json.loads(process.stdout)["commit"], self.first)
+
+    def test_large_byte_limit_options_do_not_preallocate_the_limit(self):
+        process = subprocess.run([sys.executable, "-m", "sarif_anchor", str(self.report),
+                                  "--repo", str(self.repo), "--ref", self.first, "--json",
+                                  "--max-report-bytes", str(2 ** 128),
+                                  "--max-blob-bytes", str(2 ** 128)],
+                                 cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(json.loads(process.stdout)["locations"][0]["status"], "snippet-match")
 
     def test_bare_repository_and_annotated_tag(self):
         self.git("tag", "-am", "Original", "original", self.first)

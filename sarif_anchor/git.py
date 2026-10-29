@@ -25,6 +25,18 @@ class Limits:
     total_seconds: float = 30
 
 
+def read_limited(stream, limit):
+    chunks = []
+    remaining = limit + 1
+    while remaining:
+        chunk = stream.read(min(remaining, 64 * 1024))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b"".join(chunks)
+
+
 class GitTree:
     def __init__(self, repo, revision, limits):
         if not revision or revision.startswith("-") or "\0" in revision:
@@ -60,7 +72,7 @@ class GitTree:
         chunks = []
 
         def read():
-            chunks.append(process.stdout.read(limit + 1))
+            chunks.append(read_limited(process.stdout, limit))
 
         reader = threading.Thread(target=read, daemon=True)
         reader.start()

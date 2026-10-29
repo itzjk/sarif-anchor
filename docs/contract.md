@@ -36,6 +36,13 @@ excludes it. An empty blob has no source lines; `a\n` has one, and `\n` has one
 empty line. Lone CR and Unicode separators remain content, not line boundaries.
 The default SARIF `newlineSequences` is supported; other sequences are unverified.
 
+Sources are decoded as UTF-8. A direct-URI entry in `run.artifacts` can declare
+its `encoding`, overriding `run.defaultEncoding`. Only UTF-8 declarations are
+supported; other encodings remain unverified even when their bytes also happen
+to be valid UTF-8. If no encoding is declared, UTF-8 is assumed. A leading UTF-8
+byte order mark also remains unverified, rather than being counted as source
+content or removed by an additional normalization step.
+
 URI percent escapes are decoded once as strict UTF-8. Direct paths with spaces
 must encode them as `%20`. Absolute paths, schemes, authorities, queries,
 fragments, malformed escapes, backslashes, controls, empty path components, `.`,
@@ -51,9 +58,11 @@ includes every primary location examined, and `results_without_locations` counts
 results that provided none. `secondary_locations_excluded` counts related
 locations, flow steps (including indirect steps), stack/graph locations, and
 annotations, including run-level flow locations and graph nodes.
+Invocation and conversion notification locations are also counted as secondary.
 `context_regions_excluded` counts primary context regions.
-External or aggregated run data gets an explicit exclusion; its unavailable
-location count is unknown, not zero evidence. None of these references is loaded.
+Inline external properties, external references, or aggregated run data get an
+explicit exclusion; their unavailable location count is unknown, not zero
+evidence. None of these references is loaded.
 
 `complete` means every primary location was checked with a snippet and there
 were no exclusions, absent primary locations, or empty reports. It can be true
@@ -87,6 +96,11 @@ recognized; older Git fails before accessing repository objects. Blob limits and
 input errors. Diagnostic reasons remain in the output. Human evidence previews
 are limited to 160 characters and terminal controls are escaped; JSON contains
 full accepted observed evidence.
+
+If the observed-evidence budget is exceeded after comparison, the measured
+status is retained, `observed` becomes null, and an exclusion identifies that
+location. Coverage is incomplete; an already established mismatch still causes
+exit `1` rather than being replaced by an incomplete-only outcome.
 
 Invalid-input JSON has `schema_version`, `error`, `commit`, and `exit_code: 3`.
 `commit` is null if validation failed before resolving a revision; otherwise it

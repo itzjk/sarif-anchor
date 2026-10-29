@@ -23,6 +23,11 @@ read-only behavior. A missing promisor object is paired with a tripwire remote
 helper to ensure a check does not invoke a lazy fetch. Filters and textconv are
 also paired with a tripwire.
 
+Regressions also cover declared source encodings, byte order marks, notification
+location exclusions, malformed URI authorities, and byte limits larger than a
+platform-sized integer. Evidence truncation must preserve a measured mismatch
+and report incomplete coverage at the same time.
+
 To reproduce the GIF scenario from the repository root:
 
 ```sh

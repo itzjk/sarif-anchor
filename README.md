@@ -71,7 +71,7 @@ When discrepancies and incomplete coverage coexist, exit `1` preserves both in J
 ## Limitations
 
 - Supports direct repository-relative URIs and whole-line primary regions only.
-- Columns, offsets, indirect references, unresolved URI bases, custom newline sequences, binary data, and non-UTF-8 sources remain unverified.
+- Columns, offsets, indirect references, unresolved URI bases, custom newline sequences, binary data, non-UTF-8 encodings, and byte order marks remain unverified.
 - Symlinks and submodules receive explicit diagnostics; their targets are never followed.
 - Secondary locations and context regions are excluded, counted, and prevent complete coverage.
 - This is a citation check, not a complete SARIF schema validator. No declared revision means the analyzed commit is unknown.
