@@ -47,7 +47,9 @@ PATH="$PWD/.venv/bin:$PATH" vhs docs/demo.tape
 ```
 
 The tape creates its own temporary two-commit repository. All visible commands
-run the installed CLI. Keep the final mismatch visible when adjusting timing.
+run the installed CLI. It waits for the original match before revealing the
+terminal, so the first frame contains evidence even in a static preview. It
+also waits for the shifted mismatch before holding the final result on screen.
 
 ## Official SARIF validation
 
