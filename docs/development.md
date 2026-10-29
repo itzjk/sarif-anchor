@@ -8,6 +8,13 @@ python3 -m venv .venv
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
+For editable development, use `.venv/bin/python -m pip install --editable .`.
+The small `setup.py` entry point also supports pip 21.2.4, which predates
+PEP 660 editable installs. Package metadata stays in `pyproject.toml`.
+On Python 3.9 the build backend stays below setuptools 80, whose `develop`
+command delegates to pip inside the isolated build environment. That delegation
+fails with pip 21.2.4; newer Python versions use the current backend.
+
 The suite uses real temporary Git repositories and synthetic citations. It
 checks dirty worktrees and staged files, both revisions, modified and missing
 blobs, newline and whitespace semantics, Unicode paths, unsupported locations,
@@ -59,6 +66,7 @@ branch to return `snippet-match` must fail `test_range_only_is_incomplete`.
 Both mutations were run in disposable copies during delivery and produced
 failing tests. They protect the two central claims, not just parser behavior.
 
-CI runs the integration suite on Linux and macOS with Python 3.10 and 3.13.
+CI runs the integration suite on Linux and macOS with Python 3.9, 3.10, and 3.13.
+A separate job installs with Python 3.9 and pip 21.2.4 in editable mode.
 Remote installation and workflow execution can be checked after the repository
 has been published; a local build cannot establish that those remote actions ran.

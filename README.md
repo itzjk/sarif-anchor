@@ -9,7 +9,7 @@ Catch stale source citations before reviewing a SARIF report.
 
 ## Quick start
 
-Requires Python 3.10+, Git 2.45+, and [pipx](https://pipx.pypa.io/stable/installation/).
+Requires Python 3.9+, Git 2.45+, and [pipx](https://pipx.pypa.io/stable/installation/).
 
 ```sh
 pipx install git+https://github.com/itzjk/sarif-anchor.git
