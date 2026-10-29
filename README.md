@@ -19,6 +19,9 @@ pipx install git+https://github.com/itzjk/sarif-anchor.git
 sarif-anchor report.sarif --repo . --ref HEAD
 ```
 
+From a local clone, run `pipx install .` in the repository root, then use
+`sarif-anchor` as above.
+
 ## Features
 
 - Pin every check to a resolved commit, even with staged or uncommitted edits.
